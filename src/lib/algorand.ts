@@ -86,6 +86,10 @@ export async function isListing(address: string): Promise<boolean> {
     return hasPriceToken !== undefined
 }
 
+export function nextTick() {
+    return new Promise<void>(r => setTimeout(r, 0))
+}
+
 export async function getListings(tagName: string, minPrice=0, maxPrice=0): Promise<Listing[]> {
     const indexer  = getIndexer()
 
@@ -108,17 +112,17 @@ export async function getListings(tagName: string, minPrice=0, maxPrice=0): Prom
 
     const balances =  await lookup.do()
 
-    const listings = []
+    const listings: Promise<Listing>[] = []
     for (let bidx in balances.balances) {
         const b = balances.balances[bidx]
 
         if (b.address == ps.application.owner_addr || b.amount == 0) continue;
 
-        const listing = await getListing(b.address);
-        listings.push(listing);
+        listings.push(getListing(b.address))
+        await nextTick() // Avoid overflow by running in the next tick
     }
 
-    return listings
+    return await Promise.all(listings)
 }
 
 export async function getTagToken(name: string): Promise<TagToken> {
